@@ -412,7 +412,6 @@ class Handler:
 class Bot:
 
     def __init__(self):
-        self.menu = Menu()
         self.notes_book = NotesBook()
         self.address_book = AddressBook()
         self.handler = Handler(self.notes_book, self.address_book)
