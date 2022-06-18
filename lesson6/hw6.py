@@ -2,8 +2,6 @@ import os
 import shutil
 import sys
 import aioshutil
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
 from aiopath import AsyncPath
 from asyncio import run, gather
 
@@ -42,6 +40,7 @@ def normalize(name):
     return result
 
 files_path_list = []
+directories_list = []
 
 
 async def files_handler(base_path, path):
@@ -57,7 +56,7 @@ async def files_handler(base_path, path):
 
         new_name = ".".join([normalize(file_name), file_type])
 
-        for k, v in folder_ext_dict.items():
+        for k, _ in folder_ext_dict.items():
 
             if file_type.upper() in folder_ext_dict.get(k):
                 folder_to_move = k
@@ -75,51 +74,31 @@ async def files_handler(base_path, path):
 
 
 async def main_move(base_path):
-
         items = files_path_list
         features = (files_handler(base_path, file) for file in items)
-
         await gather(*features)
 
-def directories_handler(base_path, item):
-    item_path = item
 
-    dir_not_empty = next(item_path.iterdir(), None)
+async def map_directories(path):
 
-    if dir_not_empty:
-        sort_docs(item_path, base_path)
+    print(f" THIS PATH{path}, {type(path)}")
+    item_path = AsyncPath(path)
+    full_path = await item_path.absolute()
+    file_check = await item_path.is_file()
 
 
-def sort_docs(path, base_path=None):
+    if file_check:
+        files_path_list.append(full_path)
+    elif os.path.dirname(path) not in FOLDERS:
+        directories_list.append(full_path)
 
-    if not base_path:
-        base_path = path
-    directories = os.listdir(path)
-
-    files_list = []
-    directories_list = []
-
-    def map_directories(item):
-        item_path = f"{path}/{item}"
     
-        nonlocal files_list
-        nonlocal directories_list
-
-        if os.path.isfile(item_path):
-            files_path_list.append(Path(item_path).resolve())
-            files_list.append(Path(item_path).resolve())
-        elif os.path.isdir(item_path) and (item not in FOLDERS):
-            directories_list.append(Path(item_path).resolve())
-
-    with ThreadPoolExecutor() as executor:
-        search = list(map(map_directories, list(directories)))    
+async def main_maping(path1):
     
-    if directories_list:
-        items = directories_list
-        args = [(base_path, dir) for dir in items]
-        
-        with ThreadPoolExecutor() as executor:
-            search = list(map(lambda x: directories_handler(*x), args))
+    directories = [name_dir.path for name_dir in os.scandir(path1)]
+    if directories:
+        features = (map_directories(file) for file in list(directories))
+        await gather(*features)
 
 
 def sort_folder(folder_path):
@@ -129,7 +108,12 @@ def sort_folder(folder_path):
     except ValueError:
         "Please enter a correct path"
 
-    sort_docs(folder_path)
+    directories_list.append(folder_path)
+
+    while directories_list:
+        path = directories_list[0]
+        run(main_maping(path))
+        directories_list.pop(0)
 
     run(main_move(folder_path))
 
