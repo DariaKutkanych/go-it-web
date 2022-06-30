@@ -1,0 +1,44 @@
+DROP TABLE IF EXISTS groups;
+CREATE TABLE groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    number INTEGER UNIQUE
+);
+
+
+DROP TABLE IF EXISTS teachers;
+CREATE TABLE teachers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL
+);
+
+DROP TABLE IF EXISTS subjects;
+CREATE TABLE subjects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    teacher_id INTEGER,
+    FOREIGN KEY (teacher_id) REFERENCES teachers (id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+DROP TABLE IF EXISTS students;
+CREATE TABLE students (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    group_id INTEGER,
+    FOREIGN KEY (group_id) REFERENCES groups (id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+DROP TABLE IF EXISTS marks;
+CREATE TABLE marks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mark INTEGER CHECK (0 <= mark <= 100),
+    student_id INTEGER,
+    subject_id INTEGER,
+    date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students (id),
+    FOREIGN KEY (subject_id) REFERENCES subjects (id)
+);
