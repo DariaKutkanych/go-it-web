@@ -2,31 +2,27 @@ import socket
 import threading
 
 
-stop_indicator = True
-
-
 def send_message(sock):
 
-    global stop_indicator
-
-    while stop_indicator:
+    while True:
         command = input("")
-        sock.send(command.encode())
-        if command == "stop":
-            stop_indicator = False
+        try:
+            sock.send(command.encode())
+        except OSError:
+            print(f"Sorry, your contact disconnected")
+            break
+        if command in ["stop", "break"]:
+            break
 
 
 def receive_message(sock):
-
-    global stop_indicator
     
-    while stop_indicator:
-        
+    while True:
             request = sock.recv(4000)
             print(request.decode())
             if request.decode().lower() == "stop":
                 sock.send(request)
-                stop_indicator = False
+                break
 
 
 if __name__ == "__main__":

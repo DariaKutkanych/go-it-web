@@ -1,16 +1,9 @@
-"""The task was to make one answer OK. But I did really wanted them to communicate simultaniously 
-and to have several users(not good implementation thaugh, needs lots of refactoring).
-Please not that the keyword for breaking one connection is 'stop' on any side you like. 
-Thanks in advance for comments and understanding.
-"""
-
-
 import threading
 import socket
 
 
 sock = None
-
+e = threading.Event()
 
 def server_func():
     global sock
@@ -20,7 +13,7 @@ def server_func():
     sock.listen(10)
 
 
-def accept_conn(sock):
+def accept_conn(sock, e):
         client_socket, addr = sock.accept()
         print(f"Connected by {addr}")
         first_message(client_socket, addr)
@@ -53,9 +46,13 @@ def receive_message(client_socket, addr):
     
     while True:
         request = client_socket.recv(4096)
-        if request.decode().lower() == "stop":
+        if request.decode().lower() in ["stop", "break"]:
+            client_socket.send("stop".encode())
             client_socket.close()
+            if request.decode().lower() == "break":
+                e.set()
             break
+
         if request:
             print(f"Msg from {addr}: {request.decode()}")
 
@@ -66,13 +63,14 @@ def first_message(client_socket, addr):
         print(f"Msg from {addr}: {request.decode()}")
 
 
-def create_connections():
-    while True:
-        a = threading.Thread(target=accept_conn, args=(sock,), daemon=True)
+def create_connections(e):
+    while not e.is_set():
+        a = threading.Thread(target=accept_conn, args=(sock, e), daemon=True)
         a.start()
+    print("GOOD BYE, SEE YOU")
 
 
 if __name__=="__main__":
 
     server_func()
-    create_connections()
+    create_connections(e)
