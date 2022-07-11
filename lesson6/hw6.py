@@ -4,11 +4,12 @@ import sys
 import aioshutil
 from aiopath import AsyncPath
 from asyncio import run, gather
+from queue import Queue
 
 
 FOLDERS = ["images", "documents", "audio", "video", "archives", "others"]
 
-folder_ext_dict = {"images": ["JPEG", "PNG", "JPG", "SVG"],
+folder_extension_dict = {"images": ["JPEG", "PNG", "JPG", "SVG"],
                    "documents": ["DOC", "DOCX", "TXT", "PDF", "XLSX", "PPTX"],
                    "audio": ["MP3", "OGG", "WAV", "AMR"],
                    "video": ["AVI", "MP4", "MOV", "MKV"],
@@ -40,7 +41,7 @@ def normalize(name):
     return result
 
 files_path_list = []
-directories_list = []
+directories_list = Queue()
 
 
 async def files_handler(base_path, path):
@@ -56,20 +57,30 @@ async def files_handler(base_path, path):
 
         new_name = ".".join([normalize(file_name), file_type])
 
-        for k, _ in folder_ext_dict.items():
+        for key in folder_extension_dict.keys():
 
-            if file_type.upper() in folder_ext_dict.get(k):
-                folder_to_move = k
+            if file_type.upper() in folder_extension_dict.get(key):
+                folder_to_move = key
                 break
 
         move_file_to_path = f"{base_path}/{folder_to_move}/{new_name}"
 
         if folder_to_move == "archives":
-            await aioshutil.unpack_archive(str(item_path), move_file_to_path, file_type)
+            while True:
+                try:
+                    await aioshutil.unpack_archive(str(item_path), move_file_to_path, file_type)
+                    break
+                except PermissionError:
+                    move_file_to_path = f"{move_file_to_path}-copy"
             os.remove(item_path)
 
         else:
-            await aioshutil.move(item_path, move_file_to_path)
+            while True:
+                try:
+                    await aioshutil.move(item_path, move_file_to_path)
+                    break
+                except PermissionError:
+                    move_file_to_path = f"{move_file_to_path}-copy"
         return
 
 
@@ -81,16 +92,16 @@ async def main_move(base_path):
 
 async def map_directories(path):
 
-    print(f" THIS PATH{path}, {type(path)}")
+
     item_path = AsyncPath(path)
-    full_path = await item_path.absolute()
+    full_path = item_path
     file_check = await item_path.is_file()
 
 
     if file_check:
         files_path_list.append(full_path)
     elif os.path.dirname(path) not in FOLDERS:
-        directories_list.append(full_path)
+        directories_list.put(full_path)
 
     
 async def main_maping(path1):
@@ -105,32 +116,27 @@ def sort_folder(folder_path):
 
     try:
         create_sorted_folders(folder_path)
+        directories_list.put(folder_path)
+
+        while not directories_list.empty():
+            path = directories_list.get()
+            run(main_maping(path))
+
+        run(main_move(folder_path))
+
+        for folder in os.listdir(folder_path):
+            if folder not in FOLDERS:
+                shutil.rmtree(f"{folder_path}/{folder}")
+
     except ValueError:
-        "Please enter a correct path"
-
-    directories_list.append(folder_path)
-
-    while directories_list:
-        path = directories_list[0]
-        run(main_maping(path))
-        directories_list.pop(0)
-
-    run(main_move(folder_path))
-
-    for folder in os.listdir(folder_path):
-        if folder not in FOLDERS:
-            shutil.rmtree(f"{folder_path}/{folder}")
+        print("Please enter a correct path")
 
 
 if __name__=="__main__":
 
 
     if len(sys.argv) > 1:
-
-        create_sorted_folders(sys.argv[1])
         sort_folder(sys.argv[1])
-    
     else:
-
         folder_path=input("Please enter the path: ")
         sort_folder(folder_path)
