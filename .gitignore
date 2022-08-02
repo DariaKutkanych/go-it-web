@@ -1,0 +1,14 @@
+lesson8_try
+lesson9_try
+lesson10_try
+lesson12_try
+sqlalchemy_test.py
+lesson8/venv
+
+lesson9/venv
+lesson10/venv
+lesson11/venv
+lesson12/venv
+
+*.zip
+*.py
