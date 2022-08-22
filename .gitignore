@@ -3,6 +3,7 @@ lesson9_try
 lesson10_try
 lesson12_try
 lesson13_try
+lesson14_try
 sqlalchemy_test.py
 lesson8/venv
 
@@ -11,6 +12,7 @@ lesson10/venv
 lesson11/venv
 lesson12/venv
 lesson13/venv
+lesson14/venv
 
 *.zip
 *.py
